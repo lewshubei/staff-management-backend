@@ -39,10 +39,14 @@ module.exports = function (app) {
     controller.deleteUser
   );
 
-  // Add this route
   app.get(
     "/api/roles",
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getAllRoles
+  );
+  app.get(
+    "/api/reports/stats",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getUserStats
   );
 };

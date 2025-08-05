@@ -18,9 +18,15 @@ db.role = require("./role.model.js")(sequelize, Sequelize);
 
 db.role.belongsToMany(db.user, {
   through: "user_roles",
+  as: "users", // Add alias for users
+  foreignKey: "roleId",
+  otherKey: "userId",
 });
 db.user.belongsToMany(db.role, {
   through: "user_roles",
+  as: "roles", // Add alias for roles - this is what your controller expects
+  foreignKey: "userId",
+  otherKey: "roleId",
 });
 db.attendance = require("./attendance.model.js")(sequelize, Sequelize);
 

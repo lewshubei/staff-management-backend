@@ -21,7 +21,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// [EMPLOYEE/INTERN] Update own profile
+// [ALL] Update own profile
 exports.updateProfile = async (req, res) => {
   try {
     await User.update(
@@ -42,35 +42,41 @@ exports.updateProfile = async (req, res) => {
 // [ADMIN] Get all users
 exports.getAllUsers = async (req, res) => {
   try {
+    console.log("BACKEND - Fetching all users with roles");
+
     const users = await User.findAll({
-      attributes: { exclude: ["password"] },
+      attributes: [
+        "id",
+        "username",
+        "email",
+        "fullName",
+        "createdAt",
+        "updatedAt",
+      ],
       include: [
         {
           model: Role,
+          as: "roles", // Make sure this matches your model association
           attributes: ["id", "name"],
-          through: { attributes: [] }, // Don't include junction table data
+          through: { attributes: [] }, // Exclude junction table attributes
         },
       ],
+      order: [["createdAt", "DESC"]], // Most recent first
     });
 
-    // Transform the response to make it easier for frontend
-    const usersWithRoles = users.map((user) => ({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      fullName: user.fullName || user.username, // Add fullName if it exists
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      roles: user.Roles, // This will be an array of role objects
-      // Add a primary role for easier access
-      primaryRole:
-        user.Roles && user.Roles.length > 0 ? user.Roles[0].name : null,
-    }));
+    console.log("BACKEND - Found users:", users.length);
+    console.log(
+      "BACKEND - Sample user with roles:",
+      JSON.stringify(users[0], null, 2)
+    );
 
-    res.send(usersWithRoles);
-  } catch (err) {
-    console.error("Error getting all users:", err);
-    res.status(500).send({ message: err.message });
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("BACKEND - Error fetching users:", error);
+    res.status(500).json({
+      message: "Error fetching users",
+      error: error.message,
+    });
   }
 };
 
@@ -150,5 +156,83 @@ exports.getAllRoles = async (req, res) => {
   } catch (error) {
     console.error("Error getting roles:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getUserStats = async (req, res) => {
+  try {
+    console.log("🔍 BACKEND - Fetching user statistics");
+
+    // Get total users count
+    const totalUsers = await User.count();
+
+    // Get users with their roles - FIXED: Added 'as' alias
+    const usersWithRoles = await User.findAll({
+      include: [
+        {
+          model: Role,
+          as: "roles", // This was missing and causing the error
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+        },
+      ],
+    });
+
+    // Count users by role
+    let adminCount = 0;
+    let employeeCount = 0;
+    let internCount = 0;
+
+    usersWithRoles.forEach((user) => {
+      const userRoles = user.roles || [];
+      if (
+        userRoles.some(
+          (role) => role.name === "ROLE_ADMIN" || role.name === "admin"
+        )
+      ) {
+        adminCount++;
+      } else if (
+        userRoles.some(
+          (role) => role.name === "ROLE_EMPLOYEE" || role.name === "employee"
+        )
+      ) {
+        employeeCount++;
+      } else if (
+        userRoles.some(
+          (role) => role.name === "ROLE_INTERN" || role.name === "intern"
+        )
+      ) {
+        internCount++;
+      }
+    });
+
+    // Calculate recent activity (users created in last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentActivity = await User.count({
+      where: {
+        createdAt: {
+          [require("sequelize").Op.gte]: sevenDaysAgo,
+        },
+      },
+    });
+
+    const stats = {
+      totalUsers,
+      adminCount,
+      employeeCount,
+      internCount,
+      recentActivity,
+    };
+
+    console.log("BACKEND - User stats:", stats);
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error("BACKEND - Error fetching user stats:", error);
+    res.status(500).json({
+      message: "Error fetching user statistics",
+      error: error.message,
+    });
   }
 };
