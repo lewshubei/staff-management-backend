@@ -10,10 +10,6 @@ module.exports = function (app) {
     next();
   });
 
-  // Profile routes
-  app.get("/api/user/profile", [authJwt.verifyToken], controller.getProfile);
-  app.put("/api/user/profile", [authJwt.verifyToken], controller.updateProfile);
-
   // Admin-only user management routes
   app.get(
     "/api/users",
@@ -21,17 +17,11 @@ module.exports = function (app) {
     controller.getAllUsers
   );
 
-  app.put(
-    "/api/users/:userId/role",
-    [authJwt.verifyToken, authJwt.isAdmin],
-    controller.updateUserRole
-  );
+  // Get user by ID - ADD THIS ROUTE
+  app.get("/api/users/:userId", [authJwt.verifyToken], controller.getUserById);
 
-  app.put(
-    "/api/users/:userId/reset-password",
-    [authJwt.verifyToken, authJwt.isAdmin],
-    controller.resetUserPassword
-  );
+  // Update user (admin only for other users, anyone for own profile)
+  app.put("/api/users/:userId", [authJwt.verifyToken], controller.updateUser);
 
   app.delete(
     "/api/users/:userId",
@@ -44,9 +34,17 @@ module.exports = function (app) {
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getAllRoles
   );
+
   app.get(
     "/api/reports/stats",
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.getUserStats
+  );
+
+  // Create new user (admin only)
+  app.post(
+    "/api/users",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.createUser
   );
 };

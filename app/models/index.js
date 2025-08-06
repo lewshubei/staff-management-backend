@@ -36,14 +36,5 @@ db.attendance.belongsTo(db.user, {
   foreignKey: "userId",
   as: "user",
 });
-const InternshipPeriod = require("./internship_period.model.js")(
-  sequelize,
-  Sequelize
-);
-db.internshipPeriod = InternshipPeriod;
-
-// Associate internshipPeriod with User (One-to-One)
-db.user.hasOne(db.internshipPeriod, { foreignKey: "userId" });
-db.internshipPeriod.belongsTo(db.user, { foreignKey: "userId" });
 
 module.exports = db;

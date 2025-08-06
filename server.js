@@ -31,9 +31,8 @@ function initial() {
 // Routes
 require("./app/routes/auth.routes")(app);
 require("./app/routes/user.routes")(app);
-require("./app/routes/reports.routes")(app);
+
 require("./app/routes/attendance.routes")(app);
-require("./app/routes/internship.routes")(app);
 
 app.use(
   cors({
