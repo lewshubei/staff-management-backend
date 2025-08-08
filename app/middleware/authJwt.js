@@ -16,7 +16,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     req.userId = decoded.id;
-    console.log("🔍 JWT - User ID set:", req.userId);
+    console.log("JWT - User ID set:", req.userId);
 
     try {
       // Get user with roles and set them in request
@@ -33,15 +33,15 @@ const verifyToken = async (req, res, next) => {
 
       if (user && user.roles) {
         req.userRoles = user.roles.map((role) => role.name);
-        console.log("🔍 JWT - User roles set:", req.userRoles);
+        console.log("JWT - User roles set:", req.userRoles);
       } else {
         req.userRoles = [];
-        console.log("🔍 JWT - No roles found for user");
+        console.log("JWT - No roles found for user");
       }
 
       next();
     } catch (error) {
-      console.error("🔍 JWT - Error getting user roles:", error);
+      console.error("JWT - Error getting user roles:", error);
       req.userRoles = [];
       next();
     }
@@ -50,21 +50,21 @@ const verifyToken = async (req, res, next) => {
 
 const isAdmin = async (req, res, next) => {
   try {
-    console.log("🔍 JWT - Checking admin access");
-    console.log("🔍 JWT - User roles:", req.userRoles);
+    console.log("JWT - Checking admin access");
+    console.log("JWT - User roles:", req.userRoles);
 
     // Check if user has admin role
     if (req.userRoles && req.userRoles.includes("admin")) {
-      console.log("🔍 JWT - Admin access granted");
+      console.log("JWT - Admin access granted");
       return next();
     }
 
-    console.log("🔍 JWT - Admin access denied");
+    console.log(" JWT - Admin access denied");
     return res.status(403).send({
       message: "Require Admin Role!",
     });
   } catch (error) {
-    console.error("🔍 JWT - Error in isAdmin check:", error);
+    console.error("JWT - Error in isAdmin check:", error);
     return res.status(500).send({
       message: error.message,
     });

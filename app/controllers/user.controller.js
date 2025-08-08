@@ -76,26 +76,26 @@ exports.updateUser = async (req, res) => {
       internshipEnd,
     } = req.body;
 
-    console.log("🔍 BACKEND - === UPDATE USER DEBUG ===");
-    console.log("🔍 BACKEND - Target user ID:", userId);
-    console.log("🔍 BACKEND - Current user ID:", req.userId);
-    console.log("🔍 BACKEND - Current user roles:", req.userRoles);
+    console.log("BACKEND - === UPDATE USER DEBUG ===");
+    console.log("BACKEND - Target user ID:", userId);
+    console.log("BACKEND - Current user ID:", req.userId);
+    console.log("BACKEND - Current user roles:", req.userRoles);
 
     // Check if user can update this profile (either admin or own profile)
-    const isAdmin = req.userRoles && req.userRoles.includes("admin"); // Changed from "ROLE_ADMIN" to "admin"
+    const isAdmin = req.userRoles && req.userRoles.includes("admin");
     const isOwnProfile = parseInt(req.userId) === parseInt(userId);
 
-    console.log("🔍 BACKEND - Is Admin:", isAdmin);
-    console.log("🔍 BACKEND - Is Own Profile:", isOwnProfile);
+    console.log("BACKEND - Is Admin:", isAdmin);
+    console.log("BACKEND - Is Own Profile:", isOwnProfile);
 
     if (!isAdmin && !isOwnProfile) {
-      console.log("🔍 BACKEND - ACCESS DENIED");
+      console.log("BACKEND - ACCESS DENIED");
       return res.status(403).json({
         message: "Access denied. You can only update your own profile.",
       });
     }
 
-    console.log("🔍 BACKEND - ACCESS GRANTED");
+    console.log("BACKEND - ACCESS GRANTED");
 
     // Find the user
     const user = await User.findByPk(userId);
@@ -111,12 +111,18 @@ exports.updateUser = async (req, res) => {
     if (email) updateData.email = email;
     if (fullName !== undefined) updateData.fullName = fullName;
 
+    // Add internship dates directly to the users table
+    if (internshipStart) updateData.internshipStart = internshipStart;
+    if (internshipEnd) updateData.internshipEnd = internshipEnd;
+
     // Add password if provided
     if (password) {
       updateData.password = bcrypt.hashSync(password, 8);
     }
 
-    // Update user
+    console.log("BACKEND - Update data:", updateData);
+
+    // Update user (this will now include internship fields)
     await user.update(updateData);
 
     // Update role if provided (admin only)
@@ -127,40 +133,7 @@ exports.updateUser = async (req, res) => {
       }
     }
 
-    // Handle internship period update (replace the existing internship code)
-    if (internshipStart && internshipEnd) {
-      console.log("🔍 BACKEND - Updating internship period:", {
-        internshipStart,
-        internshipEnd,
-      });
-
-      // Find or create InternshipPeriod record
-      const [internshipPeriod, created] =
-        await db.internshipPeriod.findOrCreate({
-          where: { userId: userId },
-          defaults: {
-            startDate: internshipStart,
-            endDate: internshipEnd,
-            userId: userId,
-          },
-        });
-
-      if (!created) {
-        // Update existing record
-        await internshipPeriod.update({
-          startDate: internshipStart,
-          endDate: internshipEnd,
-        });
-      }
-
-      console.log("🔍 BACKEND - Internship period saved:", {
-        startDate: internshipStart,
-        endDate: internshipEnd,
-        created: created,
-      });
-    }
-
-    // Get updated user with internship period for response
+    // Get updated user for response (remove internshipPeriod include)
     const updatedUser = await User.findByPk(userId, {
       include: [
         {
@@ -169,22 +142,16 @@ exports.updateUser = async (req, res) => {
           attributes: ["id", "name"],
           through: { attributes: [] },
         },
-        {
-          model: db.internshipPeriod,
-          attributes: ["startDate", "endDate"],
-        },
+        // Remove the internshipPeriod include since model is deleted
       ],
       attributes: { exclude: ["password"] },
     });
 
-    // Extract internship data for response
-    let responseInternshipStart = null;
-    let responseInternshipEnd = null;
-
-    if (updatedUser.internshipPeriod) {
-      responseInternshipStart = updatedUser.internshipPeriod.startDate;
-      responseInternshipEnd = updatedUser.internshipPeriod.endDate;
-    }
+    console.log("BACKEND - Updated user:", {
+      id: updatedUser.id,
+      internshipStart: updatedUser.internshipStart,
+      internshipEnd: updatedUser.internshipEnd,
+    });
 
     res.status(200).json({
       message: "User updated successfully!",
@@ -194,8 +161,8 @@ exports.updateUser = async (req, res) => {
         email: updatedUser.email,
         fullName: updatedUser.fullName,
         roles: updatedUser.roles,
-        internshipStart: responseInternshipStart,
-        internshipEnd: responseInternshipEnd,
+        internshipStart: updatedUser.internshipStart, // Direct from users table
+        internshipEnd: updatedUser.internshipEnd, // Direct from users table
       },
     });
   } catch (error) {
@@ -276,7 +243,7 @@ exports.getAllRoles = async (req, res) => {
 
 exports.getUserStats = async (req, res) => {
   try {
-    console.log("🔍 BACKEND - Fetching user statistics");
+    console.log("BACKEND - Fetching user statistics");
 
     // Get total users count
     const totalUsers = await User.count();
@@ -355,7 +322,7 @@ exports.getUserStats = async (req, res) => {
 // [ADMIN] Create new user
 exports.createUser = async (req, res) => {
   try {
-    console.log("🔍 BACKEND - Creating new user:", req.body);
+    console.log("BACKEND - Creating new user:", req.body);
 
     const { username, email, password, roleId, fullName } = req.body;
 
@@ -411,7 +378,7 @@ exports.createUser = async (req, res) => {
 
     await user.setRoles([role]);
 
-    console.log("🔍 BACKEND - User created successfully:", user.username);
+    console.log("BACKEND - User created successfully:", user.username);
 
     res.status(201).json({
       message: "User created successfully!",
@@ -433,9 +400,12 @@ exports.createUser = async (req, res) => {
 };
 exports.getUserById = async (req, res) => {
   try {
+    // extract userId from request parameters
     const userId = req.params.userId;
-    console.log("🔍 BACKEND - Getting user by ID:", userId);
-
+    //use to debug at the backend console
+    console.log("BACKEND - Getting user by ID:", userId);
+    // use to create the query
+    // SELECT users.*, roles.id, roles.name FROM users
     const user = await User.findByPk(userId, {
       include: [
         {
@@ -444,7 +414,6 @@ exports.getUserById = async (req, res) => {
           attributes: ["id", "name"],
           through: { attributes: [] },
         },
-        // Remove the internshipPeriod include since the model is deleted
       ],
       attributes: { exclude: ["password"] },
     });
@@ -454,22 +423,17 @@ exports.getUserById = async (req, res) => {
         message: "User not found",
       });
     }
-
-    console.log("🔍 BACKEND - User from database:");
-    console.log("   - internshipStart:", user.internshipStart);
-    console.log("   - internshipEnd:", user.internshipEnd);
-
+    // create user response object to the frontend
     const userResponse = {
       id: user.id,
       username: user.username,
       email: user.email,
       fullName: user.fullName,
       roles: user.roles,
-      internshipStart: user.internshipStart, // Direct from users table
-      internshipEnd: user.internshipEnd, // Direct from users table
+      internshipStart: user.internshipStart,
+      internshipEnd: user.internshipEnd,
     };
 
-    console.log("🔍 BACKEND - Response being sent:", userResponse);
     res.status(200).json(userResponse);
   } catch (error) {
     console.error("BACKEND - Error getting user:", error);

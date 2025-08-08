@@ -3,13 +3,11 @@ const config = process.env;
 const User = db.user;
 const Role = db.role;
 
+//create token
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 exports.signup = async (req, res) => {
-  console.log("🚀 SIGNUP ENDPOINT HIT!"); // Add this
-  console.log("📋 Full request body:", req.body); // Add this
-
   try {
     // Create user
     const user = await User.create({
@@ -23,8 +21,8 @@ exports.signup = async (req, res) => {
 
     // Set roles - UPDATED to handle both roleId and roles
     if (req.body.roles) {
-      console.log("🔍 BACKEND - Processing roles array:", req.body.roles);
-      // Handle array of role names (existing functionality)
+      console.log("BACKEND - Processing roles array:", req.body.roles);
+      // Handle array of role names
       const roles = await Role.findAll({
         where: {
           name: req.body.roles,
@@ -32,21 +30,21 @@ exports.signup = async (req, res) => {
       });
       await user.setRoles(roles);
     } else if (req.body.roleId) {
-      console.log("🔍 BACKEND - Received roleId:", req.body.roleId); // Make sure this is here
+      console.log("BACKEND - Received roleId:", req.body.roleId);
       const role = await Role.findOne({ where: { id: req.body.roleId } });
       if (role) {
-        console.log("✅ BACKEND - Found role:", role.name);
+        console.log("BACKEND - Found role:", role.name);
         await user.setRoles([role]);
       } else {
-        console.log("❌ BACKEND - Role not found with ID:", req.body.roleId);
+        console.log("BACKEND - Role not found with ID:", req.body.roleId);
       }
     } else {
-      console.log("⚠️ BACKEND - No role specified");
+      console.log("BACKEND - No role specified");
     }
 
     res.send({ message: "User registered successfully!" });
   } catch (err) {
-    console.error("❌ BACKEND Error:", err);
+    console.error("BACKEND Error:", err);
     res.status(500).send({ message: err.message });
   }
 };
